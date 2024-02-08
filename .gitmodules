@@ -1,0 +1,3 @@
+[submodule "dependencies/stone-prover"]
+	path = dependencies/stone-prover
+	url = https://github.com/starkware-libs/stone-prover.git
