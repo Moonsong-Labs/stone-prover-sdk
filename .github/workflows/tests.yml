@@ -65,10 +65,17 @@ jobs:
       - name: Run tests
         run: cargo test --verbose
 
+      - name: Set release artifacts
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            target/debug/cpu_air_prover
+            target/debug/cpu_air_verifier
+
       - name: Push the image to the cache
         # It's not possible to push packages from fork PRs.
         if: github.event.pull_request.head.repo.full_name == github.repository
         run: |
           docker tag stone-prover-build:latest ${STONE_PROVER_DOCKER_CACHE}
           docker push ${STONE_PROVER_DOCKER_CACHE}
-
