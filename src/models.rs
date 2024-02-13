@@ -1,9 +1,12 @@
 use cairo_vm::air_private_input::AirPrivateInputSerializable;
 use stark_evm_adapter::annotation_parser::SplitProofs;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CachedLdeConfig {
@@ -54,7 +57,7 @@ pub struct ProverParameters {
     pub use_extension_field: bool,
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
 pub enum Layout {
     #[serde(rename = "plain")]
     Plain,
@@ -74,6 +77,23 @@ pub enum Layout {
     AllSolidity,
     #[serde(rename = "starknet_with_keccak")]
     StarknetWithKeccak,
+}
+
+impl FromStr for Layout {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_value::<Layout>(Value::String(s.to_string())).map_err(|e| e.to_string())
+    }
+}
+
+impl Display for Layout {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let value = serde_json::to_value(self).map_err(|_| std::fmt::Error)?;
+        let layout_str = value.as_str().expect("This is guaranteed to be a string");
+        // serde_json adds
+        write!(f, "{}", layout_str)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -160,6 +180,7 @@ pub struct ProofAnnotations {
 #[cfg(test)]
 mod tests {
     use crate::test_utils::load_test_case_file;
+    use rstest::rstest;
 
     use super::*;
 
@@ -184,5 +205,21 @@ mod tests {
 
         // We don't check all fields, just ensure that we can deserialize the fixture
         assert!(!parameters.use_extension_field);
+    }
+
+    #[rstest]
+    #[case("small", Layout::Small)]
+    #[case("starknet_with_keccak", Layout::StarknetWithKeccak)]
+    fn deserialize_layout(#[case] layout_str: String, #[case] expected: Layout) {
+        let layout = Layout::from_str(&layout_str).unwrap();
+        assert_eq!(layout, expected);
+    }
+
+    #[rstest]
+    #[case(Layout::Small, "small")]
+    #[case(Layout::StarknetWithKeccak, "starknet_with_keccak")]
+    fn serialize_layout(#[case] layout: Layout, #[case] expected: &str) {
+        let layout_str = layout.to_string();
+        assert_eq!(layout_str, expected);
     }
 }

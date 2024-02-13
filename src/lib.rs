@@ -1,3 +1,4 @@
+pub mod cairo_vm;
 pub mod error;
 pub mod fri;
 pub(crate) mod json;
