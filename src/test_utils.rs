@@ -43,7 +43,9 @@ pub struct ProverTestCase {
 
 fn get_test_case_file_path(filename: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("dependencies")
         .join("cairo-programs")
+        .join("cairo0")
         .join(filename)
 }
 
