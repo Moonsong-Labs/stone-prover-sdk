@@ -1,2 +1,3 @@
-# stone-prover-sdk
-Rust SDK for the Stone prover and verifier.
+# Stone Prover SDK
+
+Rust SDK for the Starkware Stone prover and verifier.

@@ -1,0 +1,6 @@
+[submodule "dependencies/stone-prover"]
+	path = dependencies/stone-prover
+	url = https://github.com/starkware-libs/stone-prover.git
+[submodule "dependencies/cairo-programs"]
+	path = dependencies/cairo-programs
+	url = https://github.com/Moonsong-Labs/cairo-programs.git
