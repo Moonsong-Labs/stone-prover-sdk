@@ -1,9 +1,11 @@
-name: Tests
+name: CI/CD
 
 on:
   push:
     branches:
       - "main"
+    tags:
+      - "v*"
   pull_request:
     branches:
       - "*"
