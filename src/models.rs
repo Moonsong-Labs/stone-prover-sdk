@@ -8,13 +8,13 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct CachedLdeConfig {
     pub store_full_lde: bool,
     pub use_fft_for_eval: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct ProverConfig {
     pub cached_lde_config: CachedLdeConfig,
     pub constraint_polynomial_task_size: i32,
@@ -36,7 +36,7 @@ impl Default for ProverConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct FriParameters {
     pub fri_step_list: Vec<u32>,
     pub last_layer_degree_bound: u32,
@@ -44,13 +44,13 @@ pub struct FriParameters {
     pub proof_of_work_bits: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct StarkParameters {
     pub fri: FriParameters,
     pub log_n_cosets: i32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct ProverParameters {
     pub field: String,
     pub stark: StarkParameters,
