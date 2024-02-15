@@ -1,14 +1,11 @@
-use cairo_vm::air_private_input::AirPrivateInput;
 use std::path::Path;
 
+use cairo_vm::air_private_input::AirPrivateInput;
 use tempfile::tempdir;
 
-use crate::models::{
-    Proof, ProofAnnotations, ProverConfig, ProverParameters, ProverWorkingDirectory, PublicInput,
-};
-
-use crate::error::{ProverError, VerifierError};
+use crate::error::ProverError;
 use crate::json::{read_json_from_file, write_json_to_file};
+use crate::models::{Proof, ProverConfig, ProverParameters, ProverWorkingDirectory, PublicInput};
 
 /// Call the Stone Prover from the command line.
 ///
@@ -86,35 +83,6 @@ pub async fn run_prover_from_command_line_async(
 
     if !output.status.success() {
         return Err(ProverError::CommandError(output));
-    }
-
-    Ok(())
-}
-
-/// Call the Stone Verifier from the command line, asynchronously.
-///
-/// Input files must be prepared by the caller.
-///
-/// * `in_file`: Path to the proof generated from the prover. Corresponds to its "--out-file".
-/// * `annotation_file`: Path to the annotations file, which will be generated as output.
-/// * `extra_output_file`: Path to the extra annotations file, which will be generated as output.
-pub async fn run_verifier_from_command_line_async(
-    in_file: &Path,
-    annotation_file: &Path,
-    extra_output_file: &Path,
-) -> Result<(), VerifierError> {
-    let output = tokio::process::Command::new("cpu_air_verifier")
-        .arg("--in_file")
-        .arg(in_file)
-        .arg("--annotation_file")
-        .arg(annotation_file)
-        .arg("--extra_output_file")
-        .arg(extra_output_file)
-        .output()
-        .await?;
-
-    if !output.status.success() {
-        return Err(VerifierError::CommandError(output));
     }
 
     Ok(())
@@ -256,32 +224,6 @@ pub async fn run_prover_async(
     // Load the proof from the generated JSON proof file
     let proof = read_json_from_file(&prover_working_dir.proof_file)?;
     Ok((proof, prover_working_dir))
-}
-
-/// Run the Stone Verifier on the specified program execution, asynchronously.
-///
-/// The main difference from the synchronous implementation is that the verifier process
-/// is spawned asynchronously using `tokio::process::Command`.
-///
-/// This function abstracts the method used to call the verifier. At the moment we invoke
-/// the verifier as a subprocess but other methods can be implemented (ex: FFI).
-///
-/// * `in_file`: Path to the proof generated from the prover. Corresponds to its "--out-file".
-/// * `annotation_file`: Path to the annotations file, which will be generated as output.
-/// * `extra_output_file`: Path to the extra annotations file, which will be generated as output.
-pub async fn run_verifier_async(
-    in_file: &Path,
-    annotation_file: &Path,
-    extra_output_file: &Path,
-) -> Result<ProofAnnotations, VerifierError> {
-    // Call the verifier
-    run_verifier_from_command_line_async(in_file, annotation_file, extra_output_file).await?;
-
-    let annotations = ProofAnnotations {
-        annotation_file: annotation_file.into(),
-        extra_output_file: extra_output_file.into(),
-    };
-    Ok(annotations)
 }
 
 #[cfg(test)]
