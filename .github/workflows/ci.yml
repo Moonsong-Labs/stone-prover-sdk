@@ -47,7 +47,8 @@ jobs:
 
       - name: Get Stone submodule version
         id: get-stone-version
-        run: echo "stone_version=$(cat .git/modules/dependencies/stone-prover/HEAD)" >> $GITHUB_OUTPUT
+        run: |
+          echo "stone_version=$(cat .git/modules/dependencies/stone-prover/HEAD)" >> $GITHUB_OUTPUT
 
       - name: Cache Stone prover and verifier
         id: cache-stone
@@ -56,20 +57,26 @@ jobs:
           path: dependencies/stone
           key: stone-${{ runner.os }}-${{ steps.get-stone-version.outputs.stone_version }}
 
-      - name: Build stone
+      - name: Build Stone
         if: steps.cache-stone.outputs.cache-hit != 'true'
         run: |
           bash -x scripts/install-stone.sh --install-dir ./dependencies/stone
+
+      - name: Set Stone in PATH
+        run: |
           echo "$(pwd)/dependencies/stone" >> $GITHUB_PATH
 
       - name: Build
-        run: cargo build --verbose
+        run: |
+          cargo build --verbose
 
       - name: Lint with Clippy
-        run: cargo clippy -- -D warnings
+        run: |
+          cargo clippy -- -D warnings
 
       - name: Run tests
-        run: cargo test --verbose
+        run: |
+          cargo test --verbose
 
       - name: Set release artifacts
         uses: softprops/action-gh-release@v1
