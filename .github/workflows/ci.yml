@@ -33,7 +33,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Set up cargo cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         continue-on-error: false
         with:
           path: |
@@ -45,15 +45,22 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Log in to Github container registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Get Stone submodule version
+        id: get-stone-version
+        run: echo "stone_version=$(cat .git/modules/dependencies/stone-prover/HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Set cache image environment variables
+      - name: Cache Stone prover and verifier
+        id: cache-stone
+        uses: actions/cache@v4
+        with:
+          path: dependencies/stone
+          key: stone-${{ runner.os }}-${{ steps.get-stone-version.outputs.stone_version }}
+
+      - name: Build stone
+        if: steps.cache-stone.outputs.cache-hit != 'true'
         run: |
-          # Uppercase characters are not allowed in Docker tags
-          cache_image=$(echo ghcr.io/${GITHUB_REPOSITORY}/build-cache | tr '[:upper:]' '[:lower:]')
-          echo "STONE_PROVER_DOCKER_CACHE=$(echo ${cache_image})" >> $GITHUB_ENV
-
+          bash -x scripts/install-stone.sh --install-dir ./dependencies/stone
+          echo "$(pwd)/dependencies/stone" >> $GITHUB_PATH
 
       - name: Download Docker cache image (if available)
         run: docker pull ${STONE_PROVER_DOCKER_CACHE} || true
@@ -72,12 +79,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            target/debug/cpu_air_prover
-            target/debug/cpu_air_verifier
-
-      - name: Push the image to the cache
-        # It's not possible to push packages from fork PRs.
-        if: github.event.pull_request.head.repo.full_name == github.repository
-        run: |
-          docker tag stone-prover-build:latest ${STONE_PROVER_DOCKER_CACHE}
-          docker push ${STONE_PROVER_DOCKER_CACHE}
+            dependencies/stone/cpu_air_prover
+            dependencies/stone/cpu_air_verifier

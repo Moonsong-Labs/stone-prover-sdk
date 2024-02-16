@@ -3,7 +3,6 @@ name = "stone-prover-sdk"
 version = "0.1.0"
 edition = "2021"
 description = "Rust SDK for the Starkware Stone prover and verifier."
-build = "build.rs"
 
 [dependencies]
 bincode = "2.0.0-rc.3"

@@ -232,18 +232,15 @@ mod test {
     use tempfile::NamedTempFile;
 
     use crate::test_utils::{
-        parsed_prover_test_case, prover_cli_test_case, prover_in_path, read_proof_file,
-        ParsedProverTestCase, ProverCliTestCase,
+        parsed_prover_test_case, prover_cli_test_case, read_proof_file, ParsedProverTestCase,
+        ProverCliTestCase,
     };
 
     use super::*;
 
     /// Check that the Stone Prover command-line wrapper works.
     #[rstest]
-    fn test_run_prover_from_command_line(
-        prover_cli_test_case: ProverCliTestCase,
-        #[from(prover_in_path)] _path: (),
-    ) {
+    fn test_run_prover_from_command_line(prover_cli_test_case: ProverCliTestCase) {
         let output_file = NamedTempFile::new().expect("Creating output file failed");
         run_prover_from_command_line(
             &prover_cli_test_case.public_input_file,
@@ -259,10 +256,7 @@ mod test {
     }
 
     #[rstest]
-    fn test_run_prover(
-        parsed_prover_test_case: ParsedProverTestCase,
-        #[from(prover_in_path)] _path: (),
-    ) {
+    fn test_run_prover(parsed_prover_test_case: ParsedProverTestCase) {
         let proof = run_prover(
             &parsed_prover_test_case.public_input,
             &parsed_prover_test_case.private_input,
@@ -278,10 +272,7 @@ mod test {
 
     #[rstest]
     #[tokio::test]
-    async fn test_run_prover_async(
-        parsed_prover_test_case: ParsedProverTestCase,
-        #[from(prover_in_path)] _path: (),
-    ) {
+    async fn test_run_prover_async(parsed_prover_test_case: ParsedProverTestCase) {
         let proof = run_prover_async(
             &parsed_prover_test_case.public_input,
             &parsed_prover_test_case.private_input,

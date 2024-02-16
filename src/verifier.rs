@@ -145,32 +145,26 @@ pub async fn run_verifier_from_command_line_async(
 mod test {
     use rstest::rstest;
 
-    use crate::test_utils::{prover_in_path, prover_test_case, ProverTestCase};
+    use crate::test_utils::{prover_test_case, ProverTestCase};
 
     use super::*;
 
     /// Check that the Stone Verifier command-line wrapper works.
     #[rstest]
-    fn test_run_verifier_from_command_line(
-        prover_test_case: ProverTestCase,
-        #[from(prover_in_path)] _path: (),
-    ) {
+    fn test_run_verifier_from_command_line(prover_test_case: ProverTestCase) {
         let proof_file = prover_test_case.proof_file;
         run_verifier_from_command_line(proof_file.as_path(), None, None)
             .expect("Proof file is valid");
     }
 
     #[rstest]
-    fn test_run_verifier(prover_test_case: ProverTestCase, #[from(prover_in_path)] _path: ()) {
+    fn test_run_verifier(prover_test_case: ProverTestCase) {
         let proof_file = prover_test_case.proof_file;
         run_verifier(proof_file.as_path()).expect("Proof file is valid");
     }
 
     #[rstest]
-    fn test_run_verifier_with_annotations(
-        prover_test_case: ProverTestCase,
-        #[from(prover_in_path)] _path: (),
-    ) {
+    fn test_run_verifier_with_annotations(prover_test_case: ProverTestCase) {
         let output_dir = tempfile::tempdir().unwrap();
         let annotation_file = output_dir.path().join("annotations.json");
         let extra_output_file = output_dir.path().join("extra_output_file.json");
@@ -189,10 +183,7 @@ mod test {
     /// Check that the Stone Verifier command-line wrapper works.
     #[rstest]
     #[tokio::test]
-    async fn test_run_verifier_from_command_line_async(
-        prover_test_case: ProverTestCase,
-        #[from(prover_in_path)] _path: (),
-    ) {
+    async fn test_run_verifier_from_command_line_async(prover_test_case: ProverTestCase) {
         let proof_file = prover_test_case.proof_file;
         run_verifier_from_command_line_async(proof_file.as_path(), None, None)
             .await
@@ -201,10 +192,7 @@ mod test {
 
     #[rstest]
     #[tokio::test]
-    async fn test_run_verifier_async(
-        prover_test_case: ProverTestCase,
-        #[from(prover_in_path)] _path: (),
-    ) {
+    async fn test_run_verifier_async(prover_test_case: ProverTestCase) {
         let proof_file = prover_test_case.proof_file;
         run_verifier_async(proof_file.as_path())
             .await
@@ -213,10 +201,7 @@ mod test {
 
     #[rstest]
     #[tokio::test]
-    async fn test_run_verifier_with_annotations_async(
-        prover_test_case: ProverTestCase,
-        #[from(prover_in_path)] _path: (),
-    ) {
+    async fn test_run_verifier_with_annotations_async(prover_test_case: ProverTestCase) {
         let output_dir = tempfile::tempdir().unwrap();
         let annotation_file = output_dir.path().join("annotations.json");
         let extra_output_file = output_dir.path().join("extra_output_file.json");

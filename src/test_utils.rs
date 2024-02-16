@@ -10,18 +10,6 @@ use tempfile::NamedTempFile;
 use crate::json::read_json_from_file;
 use crate::models::{Proof, ProverConfig, ProverParameters, PublicInput};
 
-#[fixture]
-pub fn prover_in_path() {
-    // Add build dir to path for the duration of the test
-    let path = std::env::var("PATH").unwrap_or_default();
-    let build_dir = Path::new(env!("OUT_DIR"));
-    // This will find the root of the target directory where the prover binaries
-    // are put after compilation.
-    let target_dir = build_dir.join("../../..").canonicalize().unwrap();
-
-    std::env::set_var("PATH", format!("{}:{path}", target_dir.to_string_lossy()));
-}
-
 /// Reads and deserializes a JSON proof file.
 pub fn read_proof_file<P: AsRef<Path>>(proof_file: P) -> Proof {
     let proof: Proof = read_json_from_file(proof_file).expect("Could not open proof file");
