@@ -62,9 +62,6 @@ jobs:
           bash -x scripts/install-stone.sh --install-dir ./dependencies/stone
           echo "$(pwd)/dependencies/stone" >> $GITHUB_PATH
 
-      - name: Download Docker cache image (if available)
-        run: docker pull ${STONE_PROVER_DOCKER_CACHE} || true
-
       - name: Build
         run: cargo build --verbose
 
