@@ -45,6 +45,9 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
+      - name: Cargo fmt
+        run: cargo fmt --check
+
       - name: Get Stone submodule version
         id: get-stone-version
         run: |
