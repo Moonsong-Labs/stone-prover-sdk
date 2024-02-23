@@ -40,6 +40,8 @@ pub fn cairo_run(
         .secure_run
         .unwrap_or(!cairo_run_config.proof_mode);
 
+    let allow_missing_builtins = cairo_run_config.allow_missing_builtins.unwrap_or(false);
+
     let mut cairo_runner = CairoRunner::new(
         program,
         cairo_run_config.layout,
@@ -50,7 +52,7 @@ pub fn cairo_run(
     }
 
     let mut vm = VirtualMachine::new(cairo_run_config.trace_enabled);
-    let end = cairo_runner.initialize(&mut vm)?;
+    let end = cairo_runner.initialize(&mut vm, allow_missing_builtins)?;
     // check step calculation
 
     cairo_runner
@@ -82,6 +84,7 @@ pub fn cairo_run(
 pub fn run_in_proof_mode(
     program_content: &[u8],
     layout: Layout,
+    allow_missing_builtins: Option<bool>,
 ) -> Result<(CairoRunner, VirtualMachine), CairoRunError> {
     let proof_mode = true;
 
@@ -93,6 +96,7 @@ pub fn run_in_proof_mode(
         proof_mode,
         secure_run: None,
         disable_trace_padding: false,
+        allow_missing_builtins,
     };
 
     let mut hint_processor = BuiltinHintProcessor::new_empty();
@@ -127,7 +131,7 @@ pub fn make_bootloader_tasks(
         pie.map(|pie| TaskSpec {
             task: Task::Pie(pie),
         })
-        .map_err(BootloaderTaskError::Pie)
+            .map_err(BootloaderTaskError::Pie)
     });
 
     program_tasks.chain(cairo_pie_tasks).collect()
@@ -213,18 +217,21 @@ pub fn extract_execution_artifacts(
 pub fn run_bootloader_in_proof_mode(
     bootloader: &Program,
     tasks: Vec<TaskSpec>,
+    layout: Option<Layout>,
+    allow_missing_builtins: Option<bool>,
 ) -> Result<ExecutionArtifacts, ExecutionError> {
     let proof_mode = true;
-    let layout = "starknet_with_keccak";
+    let layout = layout.unwrap_or(Layout::StarknetWithKeccak);
 
     let cairo_run_config = CairoRunConfig {
         entrypoint: "main",
         trace_enabled: true,
         relocate_mem: true,
-        layout,
+        layout: &layout.to_string(),
         proof_mode,
         secure_run: None,
         disable_trace_padding: false,
+        allow_missing_builtins,
     };
 
     let n_tasks = tasks.len();
