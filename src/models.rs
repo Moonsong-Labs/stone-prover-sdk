@@ -8,6 +8,12 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[derive(Debug)]
+pub enum Verifier {
+    Stone,
+    L1,
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct CachedLdeConfig {
     pub store_full_lde: bool,
