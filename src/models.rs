@@ -8,6 +8,38 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[derive(Debug, Clone)]
+pub enum Verifier {
+    Stone,
+    L1,
+}
+
+impl FromStr for Verifier {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let verifier = match s {
+            "stone" => Self::Stone,
+            "l1" => Self::L1,
+            other => {
+                return Err(format!("unknown verifier: {other}"));
+            }
+        };
+
+        Ok(verifier)
+    }
+}
+
+impl Display for Verifier {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Stone => "stone",
+            Self::L1 => "l1",
+        };
+        write!(f, "{}", s)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct CachedLdeConfig {
     pub store_full_lde: bool,
