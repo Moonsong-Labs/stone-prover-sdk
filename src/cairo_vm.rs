@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use cairo_vm::air_private_input::AirPrivateInput;
 use cairo_vm::air_public_input::PublicInputError;
@@ -219,6 +220,7 @@ pub fn run_bootloader_in_proof_mode(
     tasks: Vec<TaskSpec>,
     layout: Option<Layout>,
     allow_missing_builtins: Option<bool>,
+    fact_topologies_path: Option<PathBuf>,
 ) -> Result<ExecutionArtifacts, ExecutionError> {
     let proof_mode = true;
     let layout = layout.unwrap_or(Layout::StarknetWithKeccak);
@@ -238,7 +240,7 @@ pub fn run_bootloader_in_proof_mode(
 
     let bootloader_input = BootloaderInput {
         simple_bootloader_input: SimpleBootloaderInput {
-            fact_topologies_path: Some("/tmp/fact_topologies".into()),
+            fact_topologies_path,
             single_page: false,
             tasks,
         },
