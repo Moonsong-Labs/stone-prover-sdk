@@ -1,4 +1,5 @@
 use cairo_vm::air_private_input::AirPrivateInputSerializable;
+use cairo_vm::types::layout_name::LayoutName;
 use stark_evm_adapter::annotation_parser::SplitProofs;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -89,6 +90,7 @@ pub struct ProverParameters {
     pub use_extension_field: bool,
 }
 
+// TODO: Should we remove this and just us LayoutName?
 #[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
 pub enum Layout {
     #[serde(rename = "plain")]
@@ -116,6 +118,22 @@ impl FromStr for Layout {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         serde_json::from_value::<Layout>(Value::String(s.to_string())).map_err(|e| e.to_string())
+    }
+}
+
+impl Into<LayoutName> for Layout {
+    fn into(self) -> LayoutName {
+        match self {
+            Layout::AllCairo => LayoutName::all_cairo,
+            Layout::AllSolidity => LayoutName::all_solidity,
+            Layout::Dex => LayoutName::dex,
+            Layout::Plain => LayoutName::plain,
+            Layout::Recursive => LayoutName::recursive,
+            Layout::RecursiveLargeOutput => LayoutName::recursive_large_output,
+            Layout::Small => LayoutName::small,
+            Layout::Starknet => LayoutName::starknet,
+            Layout::StarknetWithKeccak => LayoutName::starknet_with_keccak
+        }
     }
 }
 

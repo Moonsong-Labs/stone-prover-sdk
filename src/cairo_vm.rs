@@ -1,18 +1,18 @@
 use std::any::Any;
 use std::collections::HashMap;
+use std::io;
 use std::path::PathBuf;
 
+use cairo_bootloader::{
+    BootloaderConfig, BootloaderInput, PackedOutput, SimpleBootloaderInput, Task, TaskSpec,
+};
 use cairo_vm::air_private_input::AirPrivateInput;
 use cairo_vm::air_public_input::PublicInputError;
 use cairo_vm::cairo_run::{
     write_encoded_memory, write_encoded_trace, CairoRunConfig, EncodeTraceError,
 };
-use cairo_vm::hint_processor::builtin_hint_processor::bootloader::types::{
-    BootloaderConfig, BootloaderInput, PackedOutput, SimpleBootloaderInput, Task, TaskSpec,
-};
 use cairo_vm::hint_processor::builtin_hint_processor::builtin_hint_processor_definition::BuiltinHintProcessor;
 use cairo_vm::hint_processor::hint_processor_definition::HintProcessor;
-use cairo_vm::types::errors::cairo_pie_error::CairoPieError;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use cairo_vm::types::program::Program;
 use cairo_vm::vm::errors::cairo_run_errors::CairoRunError;
@@ -21,7 +21,6 @@ use cairo_vm::vm::errors::vm_exception::VmException;
 use cairo_vm::vm::runners::cairo_pie::CairoPie;
 use cairo_vm::vm::runners::cairo_runner::CairoRunner;
 use cairo_vm::vm::security::verify_secure_runner;
-use cairo_vm::vm::vm_core::VirtualMachine;
 use cairo_vm::{any_box, Felt252};
 use thiserror::Error;
 
@@ -36,7 +35,7 @@ pub fn cairo_run(
     cairo_run_config: &CairoRunConfig,
     hint_executor: &mut dyn HintProcessor,
     variables: HashMap<String, Box<dyn Any>>,
-) -> Result<(CairoRunner, VirtualMachine), CairoRunError> {
+) -> Result<CairoRunner, CairoRunError> {
     let secure_run = cairo_run_config
         .secure_run
         .unwrap_or(!cairo_run_config.proof_mode);
@@ -47,36 +46,30 @@ pub fn cairo_run(
         program,
         cairo_run_config.layout,
         cairo_run_config.proof_mode,
+        cairo_run_config.trace_enabled,
     )?;
     for (key, value) in variables {
         cairo_runner.exec_scopes.insert_box(&key, value);
     }
 
-    let mut vm = VirtualMachine::new(cairo_run_config.trace_enabled);
-    let end = cairo_runner.initialize(&mut vm, allow_missing_builtins)?;
+    let end = cairo_runner.initialize(allow_missing_builtins)?;
     // check step calculation
 
     cairo_runner
-        .run_until_pc(end, &mut vm, hint_executor)
-        .map_err(|err| VmException::from_vm_error(&cairo_runner, &vm, err))?;
-    cairo_runner.end_run(
-        cairo_run_config.disable_trace_padding,
-        false,
-        &mut vm,
-        hint_executor,
-    )?;
+        .run_until_pc(end, hint_executor)
+        .map_err(|err| VmException::from_vm_error(&cairo_runner, err))?;
+    cairo_runner.end_run(cairo_run_config.disable_trace_padding, false, hint_executor)?;
 
-    vm.verify_auto_deductions()?;
-    cairo_runner.read_return_values(&mut vm)?;
+    cairo_runner.read_return_values(allow_missing_builtins)?;
     if cairo_run_config.proof_mode {
-        cairo_runner.finalize_segments(&mut vm)?;
+        cairo_runner.finalize_segments()?;
     }
     if secure_run {
-        verify_secure_runner(&cairo_runner, true, None, &mut vm)?;
+        verify_secure_runner(&cairo_runner, true, None)?;
     }
-    cairo_runner.relocate(&mut vm, cairo_run_config.relocate_mem)?;
+    cairo_runner.relocate(cairo_run_config.relocate_mem)?;
 
-    Ok((cairo_runner, vm))
+    Ok(cairo_runner)
 }
 
 /// Run a Cairo program in proof mode.
@@ -86,14 +79,13 @@ pub fn run_in_proof_mode(
     program_content: &[u8],
     layout: Layout,
     allow_missing_builtins: Option<bool>,
-) -> Result<(CairoRunner, VirtualMachine), CairoRunError> {
+) -> Result<CairoRunner, CairoRunError> {
     let proof_mode = true;
-
     let cairo_run_config = CairoRunConfig {
         entrypoint: "main",
         trace_enabled: true,
         relocate_mem: true,
-        layout: &layout.to_string(),
+        layout: layout.into(),
         proof_mode,
         secure_run: None,
         disable_trace_padding: false,
@@ -102,7 +94,9 @@ pub fn run_in_proof_mode(
 
     let mut hint_processor = BuiltinHintProcessor::new_empty();
 
-    cairo_vm::cairo_run::cairo_run(program_content, &cairo_run_config, &mut hint_processor)
+    let runner =
+        cairo_vm::cairo_run::cairo_run(program_content, &cairo_run_config, &mut hint_processor)?;
+    Ok(runner)
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -111,7 +105,7 @@ pub enum BootloaderTaskError {
     Program(#[from] ProgramError),
 
     #[error("Failed to read PIE: {0}")]
-    Pie(#[from] CairoPieError),
+    Pie(#[from] io::Error),
 }
 
 pub fn make_bootloader_tasks(
@@ -183,10 +177,8 @@ impl bincode::enc::write::Writer for MemWriter {
 /// Extracts execution artifacts from the runner and VM (after execution).
 ///
 /// * `cairo_runner` Cairo runner object.
-/// * `vm`: Cairo VM object.
 pub fn extract_execution_artifacts(
     cairo_runner: CairoRunner,
-    vm: VirtualMachine,
 ) -> Result<ExecutionArtifacts, ExecutionError> {
     let memory = &cairo_runner.relocated_memory;
     let trace = cairo_runner
@@ -202,10 +194,10 @@ pub fn extract_execution_artifacts(
     write_encoded_trace(trace, &mut trace_writer).map_err(ExecutionError::EncodeTrace)?;
     let trace_raw = trace_writer.buf;
 
-    let cairo_vm_public_input = cairo_runner.get_air_public_input(&vm)?;
+    let cairo_vm_public_input = cairo_runner.get_air_public_input()?;
     let public_input = PublicInput::try_from(cairo_vm_public_input)?;
 
-    let private_input = cairo_runner.get_air_private_input(&vm);
+    let private_input = cairo_runner.get_air_private_input();
 
     Ok(ExecutionArtifacts {
         public_input,
@@ -229,7 +221,7 @@ pub fn run_bootloader_in_proof_mode(
         entrypoint: "main",
         trace_enabled: true,
         relocate_mem: true,
-        layout: &layout.to_string(),
+        layout: layout.into(),
         proof_mode,
         secure_run: None,
         disable_trace_padding: false,
@@ -260,12 +252,12 @@ pub fn run_bootloader_in_proof_mode(
         ),
     ]);
 
-    let (cairo_runner, vm) = cairo_run(
+    let cairo_runner = cairo_run(
         bootloader,
         &cairo_run_config,
         &mut hint_processor,
         variables,
     )?;
 
-    extract_execution_artifacts(cairo_runner, vm)
+    extract_execution_artifacts(cairo_runner)
 }
