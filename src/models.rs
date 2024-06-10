@@ -121,9 +121,9 @@ impl FromStr for Layout {
     }
 }
 
-impl Into<LayoutName> for Layout {
-    fn into(self) -> LayoutName {
-        match self {
+impl From<Layout> for LayoutName {
+    fn from(val: Layout) -> Self {
+        match val {
             Layout::AllCairo => LayoutName::all_cairo,
             Layout::AllSolidity => LayoutName::all_solidity,
             Layout::Dex => LayoutName::dex,
@@ -132,7 +132,7 @@ impl Into<LayoutName> for Layout {
             Layout::RecursiveLargeOutput => LayoutName::recursive_large_output,
             Layout::Small => LayoutName::small,
             Layout::Starknet => LayoutName::starknet,
-            Layout::StarknetWithKeccak => LayoutName::starknet_with_keccak
+            Layout::StarknetWithKeccak => LayoutName::starknet_with_keccak,
         }
     }
 }
