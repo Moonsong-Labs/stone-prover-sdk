@@ -6,7 +6,7 @@ description = "Rust SDK for the Starkware Stone prover and verifier."
 
 [dependencies]
 bincode = "2.0.0-rc.3"
-cairo-vm = { git = "https://github.com/Moonsong-Labs/cairo-vm", rev = "e0a4653aa5634664a3f792b38715a572e9f89b44", features = ["extensive_hints"] }
+cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "05352b1c67859a4d8cd128575c1e68ca7e300341", features = ["extensive_hints"] }
 serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
 stark_evm_adapter = "0.1.5"
