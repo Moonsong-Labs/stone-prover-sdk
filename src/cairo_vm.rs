@@ -1,10 +1,9 @@
 use std::any::Any;
 use std::collections::HashMap;
-use std::io;
 use std::path::PathBuf;
 
 use cairo_bootloader::{
-    BootloaderConfig, BootloaderInput, PackedOutput, SimpleBootloaderInput, Task, TaskSpec,
+    BootloaderConfig, BootloaderInput, PackedOutput, SimpleBootloaderInput, TaskSpec,
 };
 use cairo_vm::air_private_input::AirPrivateInput;
 use cairo_vm::air_public_input::PublicInputError;
@@ -13,13 +12,10 @@ use cairo_vm::cairo_run::{
     CairoRunConfig, EncodeTraceError,
 };
 use cairo_vm::hint_processor::builtin_hint_processor::builtin_hint_processor_definition::BuiltinHintProcessor;
-use cairo_vm::types::errors::program_errors::ProgramError;
 use cairo_vm::types::exec_scope::ExecutionScopes;
 use cairo_vm::types::program::Program;
 use cairo_vm::vm::errors::cairo_run_errors::CairoRunError;
 use cairo_vm::vm::errors::trace_errors::TraceError;
-
-use cairo_vm::vm::runners::cairo_pie::CairoPie;
 use cairo_vm::vm::runners::cairo_runner::CairoRunner;
 use cairo_vm::{any_box, Felt252};
 use thiserror::Error;
@@ -53,39 +49,6 @@ pub fn run_in_proof_mode(
     let runner =
         cairo_vm::cairo_run::cairo_run(program_content, &cairo_run_config, &mut hint_processor)?;
     Ok(runner)
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum BootloaderTaskError {
-    #[error("Failed to read program: {0}")]
-    Program(#[from] ProgramError),
-
-    #[error("Failed to read PIE: {0}")]
-    Pie(#[from] io::Error),
-}
-
-pub fn make_bootloader_tasks(
-    programs: &[Vec<u8>],
-    pies: &[Vec<u8>],
-) -> Result<Vec<TaskSpec>, BootloaderTaskError> {
-    let program_tasks = programs.iter().map(|program_bytes| {
-        let program = Program::from_bytes(program_bytes, Some("main"));
-        program
-            .map(|program| TaskSpec {
-                task: Task::Program(program),
-            })
-            .map_err(BootloaderTaskError::Program)
-    });
-
-    let cairo_pie_tasks = pies.iter().map(|pie_bytes| {
-        let pie = CairoPie::from_bytes(pie_bytes);
-        pie.map(|pie| TaskSpec {
-            task: Task::Pie(pie),
-        })
-        .map_err(BootloaderTaskError::Pie)
-    });
-
-    program_tasks.chain(cairo_pie_tasks).collect()
 }
 
 pub struct ExecutionArtifacts {
