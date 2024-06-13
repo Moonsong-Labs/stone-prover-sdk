@@ -1,9 +1,10 @@
+/// TODO: Move all this to cairo_bootloader repo?
 use std::any::Any;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use cairo_bootloader::{
-    BootloaderConfig, BootloaderInput, PackedOutput, SimpleBootloaderInput, TaskSpec,
+    insert_bootloader_input, BootloaderConfig, BootloaderHintProcessor, BootloaderInput, PackedOutput, SimpleBootloaderInput, TaskSpec
 };
 use cairo_vm::air_private_input::AirPrivateInput;
 use cairo_vm::air_public_input::PublicInputError;
@@ -11,7 +12,6 @@ use cairo_vm::cairo_run::{
     cairo_run_program_with_initial_scope, write_encoded_memory, write_encoded_trace,
     CairoRunConfig, EncodeTraceError,
 };
-use cairo_vm::hint_processor::builtin_hint_processor::builtin_hint_processor_definition::BuiltinHintProcessor;
 use cairo_vm::types::exec_scope::ExecutionScopes;
 use cairo_vm::types::program::Program;
 use cairo_vm::vm::errors::cairo_run_errors::CairoRunError;
@@ -23,6 +23,8 @@ use thiserror::Error;
 use bincode::error::EncodeError;
 
 use crate::models::{Layout, PublicInput};
+
+
 
 /// Run a Cairo program in proof mode.
 ///
@@ -44,7 +46,7 @@ pub fn run_in_proof_mode(
         allow_missing_builtins,
     };
 
-    let mut hint_processor = BuiltinHintProcessor::new_empty();
+    let mut hint_processor = BootloaderHintProcessor::new();
 
     let runner =
         cairo_vm::cairo_run::cairo_run(program_content, &cairo_run_config, &mut hint_processor)?;
@@ -162,22 +164,37 @@ pub fn run_bootloader_in_proof_mode(
         packed_outputs: vec![PackedOutput::Plain(vec![]); n_tasks],
     };
 
-    let mut hint_processor = BuiltinHintProcessor::new_empty();
-    let variables = HashMap::<String, Box<dyn Any>>::from([
-        ("bootloader_input".to_string(), any_box!(bootloader_input)),
-        (
-            "bootloader_program".to_string(),
-            any_box!(bootloader.clone()),
-        ),
-    ]);
-    let mut scope = ExecutionScopes::new();
-    scope.enter_scope(variables);
+    let mut hint_processor = BootloaderHintProcessor::new();
+    // let variables = HashMap::<String, Box<dyn Any>>::from([
+    //     ("bootloader_input".to_string(), any_box!(bootloader_input)),
+    //     (
+    //         "bootloader_program".to_string(),
+    //         any_box!(bootloader.clone()),
+    //     ),
+    // ]);
+    // let scope = ExecutionScopes {
+    //     data: vec![variables],
+    // };
+
+    let bootloader_identifiers = HashMap::from(
+        [
+            ("starkware.cairo.bootloaders.simple_bootloader.execute_task.execute_task.ret_pc_label".to_string(), 10usize),
+            ("starkware.cairo.bootloaders.simple_bootloader.execute_task.execute_task.call_task".to_string(), 8usize)
+        ]
+    );
+    let mut exec_scopes = ExecutionScopes::new();
+    insert_bootloader_input(&mut exec_scopes, bootloader_input);
+    exec_scopes.insert_value("bootloader_program_identifiers", bootloader_identifiers);
+    exec_scopes.insert_value("bootloader_program", bootloader.clone());
+
     let cairo_runner = cairo_run_program_with_initial_scope(
         bootloader,
         &cairo_run_config,
         &mut hint_processor,
-        scope,
+        exec_scopes,
     )?;
 
     extract_execution_artifacts(cairo_runner)
 }
+
+
