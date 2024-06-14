@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use cairo_vm::air_private_input::{AirPrivateInput, AirPrivateInputSerializable};
+use cairo_vm::types::builtin_name::BuiltinName;
 use rstest::fixture;
 use tempfile::NamedTempFile;
 
@@ -84,10 +85,31 @@ pub fn prover_cli_test_case(prover_test_case: ProverTestCase) -> ProverCliTestCa
     // Generate the private input in a temporary file
     let private_input_file =
         NamedTempFile::new().expect("Creating temporary private input file failed");
-    let private_input = AirPrivateInput(HashMap::new()).to_serializable(
-        prover_test_case.trace_file.to_string_lossy().into_owned(),
-        prover_test_case.memory_file.to_string_lossy().into_owned(),
-    );
+    let private_input = {
+        let mut private_input = AirPrivateInput(HashMap::new());
+
+        // Fix: a recent version of cairo-vm does not serialize unspecified fields anymore.
+        // This is not supported by Stone and triggers an exception. Here we set a default value
+        // for each builtin required by Stone to work around the issue.
+        let private_input_builtins = [
+            BuiltinName::pedersen,
+            BuiltinName::range_check,
+            BuiltinName::ecdsa,
+            BuiltinName::bitwise,
+            BuiltinName::ec_op,
+            BuiltinName::keccak,
+            BuiltinName::poseidon,
+        ];
+
+        for builtin_name in private_input_builtins {
+            private_input.0.insert(builtin_name, vec![]);
+        }
+
+        private_input.to_serializable(
+            prover_test_case.trace_file.to_string_lossy().into_owned(),
+            prover_test_case.memory_file.to_string_lossy().into_owned(),
+        )
+    };
 
     serde_json::to_writer(&private_input_file, &private_input)
         .expect("Writing private input file failed");
