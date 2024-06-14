@@ -1,55 +1,13 @@
-/// TODO: Move all this to cairo_bootloader repo?
-use std::collections::HashMap;
-use std::path::PathBuf;
-
-use cairo_bootloader::{
-    insert_bootloader_input, BootloaderConfig, BootloaderHintProcessor, BootloaderInput,
-    PackedOutput, SimpleBootloaderInput, TaskSpec,
-};
+use bincode::error::EncodeError;
 use cairo_vm::air_private_input::AirPrivateInput;
 use cairo_vm::air_public_input::PublicInputError;
-use cairo_vm::cairo_run::{
-    cairo_run_program_with_initial_scope, write_encoded_memory, write_encoded_trace,
-    CairoRunConfig, EncodeTraceError,
-};
-use cairo_vm::types::exec_scope::ExecutionScopes;
-use cairo_vm::types::program::Program;
+use cairo_vm::cairo_run::{write_encoded_memory, write_encoded_trace, EncodeTraceError};
 use cairo_vm::vm::errors::cairo_run_errors::CairoRunError;
 use cairo_vm::vm::errors::trace_errors::TraceError;
 use cairo_vm::vm::runners::cairo_runner::CairoRunner;
-use cairo_vm::Felt252;
 use thiserror::Error;
 
-use bincode::error::EncodeError;
-
-use crate::models::{Layout, PublicInput};
-
-/// Run a Cairo program in proof mode.
-///
-/// * `program_content`: Compiled program content.
-pub fn run_in_proof_mode(
-    program_content: &[u8],
-    layout: Layout,
-    allow_missing_builtins: Option<bool>,
-) -> Result<CairoRunner, CairoRunError> {
-    let proof_mode = true;
-    let cairo_run_config = CairoRunConfig {
-        entrypoint: "main",
-        trace_enabled: true,
-        relocate_mem: true,
-        layout: layout.into(),
-        proof_mode,
-        secure_run: None,
-        disable_trace_padding: false,
-        allow_missing_builtins,
-    };
-
-    let mut hint_processor = BootloaderHintProcessor::new();
-
-    let runner =
-        cairo_vm::cairo_run::cairo_run(program_content, &cairo_run_config, &mut hint_processor)?;
-    Ok(runner)
-}
+use crate::models::PublicInput;
 
 pub struct ExecutionArtifacts {
     pub public_input: PublicInput,
@@ -124,63 +82,4 @@ pub fn extract_execution_artifacts(
         memory: memory_raw,
         trace: trace_raw,
     })
-}
-
-pub fn run_bootloader_in_proof_mode(
-    bootloader: &Program,
-    tasks: Vec<TaskSpec>,
-    layout: Option<Layout>,
-    allow_missing_builtins: Option<bool>,
-    fact_topologies_path: Option<PathBuf>,
-) -> Result<ExecutionArtifacts, ExecutionError> {
-    let proof_mode = true;
-    let layout = layout.unwrap_or(Layout::StarknetWithKeccak);
-
-    let cairo_run_config = CairoRunConfig {
-        entrypoint: "main",
-        trace_enabled: true,
-        relocate_mem: true,
-        layout: layout.into(),
-        proof_mode,
-        secure_run: None,
-        disable_trace_padding: false,
-        allow_missing_builtins,
-    };
-
-    let n_tasks = tasks.len();
-
-    let bootloader_input = BootloaderInput {
-        simple_bootloader_input: SimpleBootloaderInput {
-            fact_topologies_path,
-            single_page: false,
-            tasks,
-        },
-        bootloader_config: BootloaderConfig {
-            simple_bootloader_program_hash: Felt252::from(0),
-            supported_cairo_verifier_program_hashes: vec![],
-        },
-        packed_outputs: vec![PackedOutput::Plain(vec![]); n_tasks],
-    };
-
-    let mut hint_processor = BootloaderHintProcessor::new();
-    let mut exec_scopes = ExecutionScopes::new();
-    insert_bootloader_input(&mut exec_scopes, bootloader_input);
-
-    let bootloader_identifiers: HashMap<_, _> = bootloader
-        .iter_identifiers()
-        .map(|(key, val)| (key.to_owned(), val.clone()))
-        .collect();
-    exec_scopes.insert_value(
-        "bootloader_program_identifiers",
-        bootloader_identifiers.clone(),
-    );
-
-    let cairo_runner = cairo_run_program_with_initial_scope(
-        bootloader,
-        &cairo_run_config,
-        &mut hint_processor,
-        exec_scopes,
-    )?;
-
-    extract_execution_artifacts(cairo_runner)
 }
