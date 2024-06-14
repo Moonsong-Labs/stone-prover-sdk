@@ -244,7 +244,7 @@ mod test {
         let output_file = NamedTempFile::new().expect("Creating output file failed");
         run_prover_from_command_line(
             &prover_cli_test_case.public_input_file,
-            &prover_cli_test_case.private_input_file.path(),
+            prover_cli_test_case.private_input_file.path(),
             &prover_cli_test_case.prover_config_file,
             &prover_cli_test_case.prover_parameter_file,
             output_file.path(),
