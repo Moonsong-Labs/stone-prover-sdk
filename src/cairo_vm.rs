@@ -1,10 +1,10 @@
 /// TODO: Move all this to cairo_bootloader repo?
-use std::any::Any;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use cairo_bootloader::{
-    insert_bootloader_input, BootloaderConfig, BootloaderHintProcessor, BootloaderInput, PackedOutput, SimpleBootloaderInput, TaskSpec
+    insert_bootloader_input, BootloaderConfig, BootloaderHintProcessor, BootloaderInput,
+    PackedOutput, SimpleBootloaderInput, TaskSpec,
 };
 use cairo_vm::air_private_input::AirPrivateInput;
 use cairo_vm::air_public_input::PublicInputError;
@@ -17,14 +17,12 @@ use cairo_vm::types::program::Program;
 use cairo_vm::vm::errors::cairo_run_errors::CairoRunError;
 use cairo_vm::vm::errors::trace_errors::TraceError;
 use cairo_vm::vm::runners::cairo_runner::CairoRunner;
-use cairo_vm::{any_box, Felt252};
+use cairo_vm::Felt252;
 use thiserror::Error;
 
 use bincode::error::EncodeError;
 
 use crate::models::{Layout, PublicInput};
-
-
 
 /// Run a Cairo program in proof mode.
 ///
@@ -165,27 +163,17 @@ pub fn run_bootloader_in_proof_mode(
     };
 
     let mut hint_processor = BootloaderHintProcessor::new();
-    // let variables = HashMap::<String, Box<dyn Any>>::from([
-    //     ("bootloader_input".to_string(), any_box!(bootloader_input)),
-    //     (
-    //         "bootloader_program".to_string(),
-    //         any_box!(bootloader.clone()),
-    //     ),
-    // ]);
-    // let scope = ExecutionScopes {
-    //     data: vec![variables],
-    // };
-
-    let bootloader_identifiers = HashMap::from(
-        [
-            ("starkware.cairo.bootloaders.simple_bootloader.execute_task.execute_task.ret_pc_label".to_string(), 10usize),
-            ("starkware.cairo.bootloaders.simple_bootloader.execute_task.execute_task.call_task".to_string(), 8usize)
-        ]
-    );
     let mut exec_scopes = ExecutionScopes::new();
     insert_bootloader_input(&mut exec_scopes, bootloader_input);
-    exec_scopes.insert_value("bootloader_program_identifiers", bootloader_identifiers);
-    exec_scopes.insert_value("bootloader_program", bootloader.clone());
+
+    let bootloader_identifiers: HashMap<_, _> = bootloader
+        .iter_identifiers()
+        .map(|(key, val)| (key.to_owned(), val.clone()))
+        .collect();
+    exec_scopes.insert_value(
+        "bootloader_program_identifiers",
+        bootloader_identifiers.clone(),
+    );
 
     let cairo_runner = cairo_run_program_with_initial_scope(
         bootloader,
@@ -196,5 +184,3 @@ pub fn run_bootloader_in_proof_mode(
 
     extract_execution_artifacts(cairo_runner)
 }
-
-
