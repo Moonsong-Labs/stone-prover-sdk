@@ -1,13 +1,42 @@
 use bincode::error::EncodeError;
 use cairo_vm::air_private_input::AirPrivateInput;
 use cairo_vm::air_public_input::PublicInputError;
-use cairo_vm::cairo_run::{write_encoded_memory, write_encoded_trace, EncodeTraceError};
+use cairo_vm::cairo_run::{
+    write_encoded_memory, write_encoded_trace, CairoRunConfig, EncodeTraceError,
+};
+use cairo_vm::hint_processor::hint_processor_definition::HintProcessor;
 use cairo_vm::vm::errors::cairo_run_errors::CairoRunError;
 use cairo_vm::vm::errors::trace_errors::TraceError;
 use cairo_vm::vm::runners::cairo_runner::CairoRunner;
 use thiserror::Error;
 
-use crate::models::PublicInput;
+use crate::models::{Layout, PublicInput};
+
+/// Run a Cairo program in proof mode.
+///
+/// * `program_content`: Compiled program content.
+pub fn run_in_proof_mode(
+    program_content: &[u8],
+    layout: Layout,
+    hint_processor: &mut dyn HintProcessor,
+    allow_missing_builtins: Option<bool>,
+) -> Result<CairoRunner, CairoRunError> {
+    let proof_mode = true;
+    let cairo_run_config = CairoRunConfig {
+        entrypoint: "main",
+        trace_enabled: true,
+        relocate_mem: true,
+        layout: layout.into(),
+        proof_mode,
+        secure_run: None,
+        disable_trace_padding: false,
+        allow_missing_builtins,
+    };
+
+    let runner =
+        cairo_vm::cairo_run::cairo_run(program_content, &cairo_run_config, hint_processor)?;
+    Ok(runner)
+}
 
 pub struct ExecutionArtifacts {
     pub public_input: PublicInput,
